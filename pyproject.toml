@@ -1,0 +1,19 @@
+[project]
+name = "rag-langchain"
+version = "0.1.0"
+description = "FastAPI backend skeleton for a RAG chat service"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+	"aiomysql>=0.2.0",
+	"alembic>=1.13.2",
+	"fastapi[standard]>=0.115.0",
+	"passlib[bcrypt]>=1.7.4",
+	"pydantic-settings>=2.6.1",
+	"python-dotenv>=1.0.1",
+	"python-jose[cryptography]>=3.3.0",
+	"sqlalchemy[asyncio]>=2.0.36",
+]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
