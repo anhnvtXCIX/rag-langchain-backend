@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,12 +11,14 @@ from app.models.user import User
 from app.security import decode_token
 
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+security_scheme = HTTPBearer()
 
 
 async def get_current_user(
     db: DbSessionDep,
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: Annotated[HTTPAuthorizationCredentials, Depends(security_scheme)],
+    # token: Annotated[str, Depends(oauth2_scheme)],
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -25,7 +27,7 @@ async def get_current_user(
     )
 
     try:
-        payload = decode_token(token)
+        payload = decode_token(token.credentials)
         subject = payload.get("sub")
         if subject is None:
             raise credentials_exception
