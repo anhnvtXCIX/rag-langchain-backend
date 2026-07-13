@@ -5,10 +5,12 @@ description = "FastAPI backend skeleton for a RAG chat service"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+	"asgi-correlation-id>=4.3.4",
 	"aiomysql>=0.2.0",
 	"alembic>=1.13.2",
 	"fastapi[standard]>=0.115.0",
 	"passlib[bcrypt]>=1.7.4",
+	"python-json-logger>=2.0.7",
 	"pydantic-settings>=2.6.1",
 	"python-dotenv>=1.0.1",
 	"python-jose[cryptography]>=3.3.0",
