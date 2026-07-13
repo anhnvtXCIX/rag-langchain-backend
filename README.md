@@ -3,6 +3,7 @@
 FastAPI backend skeleton for a retrieval-augmented generation (RAG) chat service.
 
 This project currently provides:
+
 - JWT-based authentication
 - User-scoped chat sessions and messages
 - User-scoped document upload/list/update/delete
@@ -22,16 +23,16 @@ This project currently provides:
 
 ```text
 app/
-	main.py               # FastAPI app entrypoint
-	config.py             # Environment-based settings
-	database.py           # Async engine/session dependency
-	dependencies.py       # Auth + DB dependencies
-	models/               # SQLAlchemy models
-	routers/              # API endpoints
-	schemas/              # Request/response schemas
-	services/             # Business logic
+ main.py               # FastAPI app entrypoint
+ config.py             # Environment-based settings
+ database.py           # Async engine/session dependency
+ dependencies.py       # Auth + DB dependencies
+ models/               # SQLAlchemy models
+ routers/              # API endpoints
+ schemas/              # Request/response schemas
+ services/             # Business logic
 alembic/
-	versions/             # Database migrations
+ versions/             # Database migrations
 ```
 
 ## Prerequisites
@@ -79,6 +80,7 @@ uv run fastapi dev
 ```
 
 API becomes available at:
+
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 - Health check: `http://127.0.0.1:8000/health`
@@ -88,10 +90,12 @@ API becomes available at:
 The app loads variables from `.env` via Pydantic settings.
 
 Required:
+
 - `DATABASE_URL`
 - `JWT_SECRET_KEY`
 
 Application settings:
+
 - `JWT_ALGORITHM` (default: `HS256`)
 - `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` (default: `60`)
 - `GOOGLE_API_KEY` (optional)
@@ -101,6 +105,7 @@ Application settings:
 - `CHROMA_PORT` (default: `8001`)
 
 Logging settings:
+
 - `ENV` (`dev` or `prod`, default: `dev`)
 - `LOG_JSON` (`true/false`, optional; forced on when `ENV=prod`)
 - `LOG_LEVEL` (default: `INFO`)
@@ -116,8 +121,8 @@ Both return a bearer token:
 
 ```json
 {
-	"access_token": "<jwt>",
-	"token_type": "bearer"
+ "access_token": "<jwt>",
+ "token_type": "bearer"
 }
 ```
 
@@ -136,6 +141,7 @@ Both return a bearer token:
 - `DELETE /documents/{document_id}`
 
 Upload constraints:
+
 - Max file size: 10 MB
 - Allowed extensions: `.txt`, `.md`, `.pdf`, `.docx`
 - Allowed MIME types: `text/plain`, `text/markdown`, `application/markdown`, `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
@@ -146,25 +152,25 @@ Register:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/auth/register \
-	-H "Content-Type: application/json" \
-	-d '{"username":"alice","email":"alice@example.com","password":"secret123"}'
+ -H "Content-Type: application/json" \
+ -d '{"username":"alice","email":"alice@example.com","password":"secret123"}'
 ```
 
 Create a chat session:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/chat/sessions \
-	-H "Authorization: Bearer <token>" \
-	-H "Content-Type: application/json" \
-	-d '{"title":"My first session"}'
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{"title":"My first session"}'
 ```
 
 Upload a document:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/documents/upload \
-	-H "Authorization: Bearer <token>" \
-	-F "file=@./notes.md"
+ -H "Authorization: Bearer <token>" \
+ -F "file=@./notes.md"
 ```
 
 ## Migrations
