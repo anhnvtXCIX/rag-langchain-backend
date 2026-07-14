@@ -98,11 +98,16 @@ Application settings:
 
 - `JWT_ALGORITHM` (default: `HS256`)
 - `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` (default: `60`)
-- `GOOGLE_API_KEY` (optional)
+- `GOOGLE_API_KEY` (required for RAG chat and document vectorization; without it, uploads fail processing and chat returns 503)
 - `UPLOAD_DIR` (default: `uploads`)
-- `CELERY_BROKER_URL` (optional)
-- `CHROMA_HOST` (default: `localhost`)
-- `CHROMA_PORT` (default: `8001`)
+- `CELERY_BROKER_URL` (optional, unused)
+- `CHROMA_HOST` (default: `localhost`, unused — Chroma runs embedded)
+- `CHROMA_PORT` (default: `8001`, unused — Chroma runs embedded)
+- `CHROMA_PERSIST_DIR` (default: `chroma_data`)
+- `CHROMA_COLLECTION_NAME` (default: `documents`)
+- `GEMINI_CHAT_MODEL` (default: `gemini-2.5-flash-lite`)
+- `GEMINI_EMBEDDING_MODEL` (default: `gemini-embedding-001`; changing it later invalidates existing vectors — delete `chroma_data/` and re-process documents via `PUT /documents/{id}`)
+- `RAG_TOP_K` (default: `4`)
 
 Logging settings:
 
@@ -194,7 +199,12 @@ uv run alembic current
 uv run alembic history
 ```
 
+## RAG Pipeline
+
+- Uploaded documents are processed in a FastAPI background task: text is extracted (`pypdf` / `python-docx` / plain text), chunked with LangChain's `RecursiveCharacterTextSplitter`, embedded with Google `gemini-embedding-001`, and stored in an embedded Chroma database (`CHROMA_PERSIST_DIR`). Document `status` moves `pending -> processing -> ready` (or `failed`; check the logs).
+- `PUT /documents/{document_id}` re-processes the stored file (use it to retry a `failed` document). `DELETE` also removes the document's vectors.
+- `POST /chat/sessions/{session_id}/messages` retrieves the top-k chunks from the caller's own documents, sends them with recent session history to Gemini, and returns both the persisted user message and the assistant reply with `sources` (document id, filename, snippet). Returns `503` if `GOOGLE_API_KEY` is not set.
+
 ## Notes
 
-- Current chat endpoint stores only user messages; assistant generation is not implemented yet.
-- Document vectorization/embedding steps are marked as TODO in document routes.
+- Background processing is in-process (no Celery yet); a document stuck in `processing` after a restart can be re-processed with `PUT /documents/{document_id}`.

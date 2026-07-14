@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
 from app.models.document import Document, DocumentStatus
+from app.rag.vector_store import delete_document_chunks
 
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx"}
@@ -105,6 +106,10 @@ class DocumentService:
         document = await self._get_owned_document(
             document_id=document_id, user_id=user_id
         )
+
+        # Vectors first: if Chroma fails, the row survives and the delete
+        # can be retried.
+        await delete_document_chunks(document.id)
 
         stored_path = Path(document.stored_path)
         if await anyio.to_thread.run_sync(stored_path.exists):  # pyright: ignore[reportAttributeAccessIssue]

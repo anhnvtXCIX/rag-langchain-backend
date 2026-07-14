@@ -16,3 +16,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Runtime data
+uploads/
+chroma_data/

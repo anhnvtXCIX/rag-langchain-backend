@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.dependencies import CurrentUserDep, DbSessionDep
+from app.models.message import Message
+from app.rag.errors import LLMNotConfiguredError
 from app.schemas.chat import (
+    ChatTurnResponse,
     CreateSessionRequest,
     MessageResponse,
     SendMessageRequest,
@@ -13,6 +16,16 @@ router = APIRouter(
     prefix="/chat",
     tags=["Chat"],
 )
+
+
+def _message_to_response(message: Message) -> MessageResponse:
+    return MessageResponse(
+        id=message.id,
+        role=message.role.value,
+        content=message.content,
+        sources=message.sources,
+        created_at=message.created_at,
+    )
 
 
 @router.post("/sessions", response_model=SessionResponse)
@@ -65,27 +78,18 @@ async def list_session_messages(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         ) from exc
-    return [
-        MessageResponse(
-            id=message.id,
-            role=message.role.value,
-            content=message.content,
-            sources=message.sources,
-            created_at=message.created_at,
-        )
-        for message in messages
-    ]
+    return [_message_to_response(message) for message in messages]
 
 
-@router.post("/sessions/{session_id}/messages", response_model=MessageResponse)
+@router.post("/sessions/{session_id}/messages", response_model=ChatTurnResponse)
 async def send_session_message(
     session_id: int,
     payload: SendMessageRequest,
     current_user: CurrentUserDep,
     db: DbSessionDep,
-) -> MessageResponse:
+) -> ChatTurnResponse:
     try:
-        message = await ChatService(db).create_user_message(
+        user_message, assistant_message = await ChatService(db).send_message(
             session_id=session_id,
             user_id=current_user.id,
             content=payload.content,
@@ -94,11 +98,13 @@ async def send_session_message(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         ) from exc
+    except LLMNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="LLM is not configured",
+        ) from exc
 
-    return MessageResponse(
-        id=message.id,
-        role=message.role.value,
-        content=message.content,
-        sources=message.sources,
-        created_at=message.created_at,
+    return ChatTurnResponse(
+        user_message=_message_to_response(user_message),
+        assistant_message=_message_to_response(assistant_message),
     )

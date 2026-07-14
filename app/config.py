@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     celery_broker_url: str | None = None
     chroma_host: str = "localhost"
     chroma_port: int = 8001
+    chroma_persist_dir: str = "chroma_data"
+    chroma_collection_name: str = "documents"
+    gemini_chat_model: str = "gemini-2.5-flash-lite"
+    gemini_embedding_model: str = "gemini-embedding-001"
+    rag_top_k: int = 4
 
 
 @lru_cache

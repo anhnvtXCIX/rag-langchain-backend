@@ -1,8 +1,9 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
 
 from app.config import get_settings
 from app.dependencies import CurrentUserDep, DbSessionDep
 from app.models.document import Document
+from app.rag.pipeline import process_document
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
 from app.services.document_service import (
     DocumentNotFoundError,
@@ -45,6 +46,7 @@ async def list_documents(
 async def upload_document(
     db: DbSessionDep,
     current_user: CurrentUserDep,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
 ) -> DocumentUploadResponse:
     service = DocumentService(db, get_settings())
@@ -68,7 +70,7 @@ async def upload_document(
             detail="File exceeds the size limit",
         ) from exc
 
-    # TODO: Consider implementing a background task to vectorize the document asynchronously if needed.
+    background_tasks.add_task(process_document, document.id)
 
     return DocumentUploadResponse(
         id=document.id,
@@ -82,6 +84,7 @@ async def update_document(
     document_id: int,
     db: DbSessionDep,
     current_user: CurrentUserDep,
+    background_tasks: BackgroundTasks,
 ) -> DocumentResponse:
     service = DocumentService(db, get_settings())
     try:
@@ -93,7 +96,7 @@ async def update_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         ) from exc
-    # TODO: Consider implementing a background task to re-vectorize the document asynchronously if needed.
+    background_tasks.add_task(process_document, document.id)
     return _document_to_response(document)
 
 

@@ -1,52 +1,53 @@
 ## Plan: Complete RAG App Feature Checklist
 
+> **Status (2026-07-14): Phases 1–2 complete.** Next up: Phase 3 (hardening & tests). Mark items `[x]` as they land and update this line, so anyone (human or agent) can see at a glance what's done and what's next.
+
 Deliver the app in four phases: first make all stubbed endpoints functional (auth, chat, documents), then add true RAG (embedding and retrieval), then harden security/performance, then finalize ops/deployment. This sequence minimizes blockers because chat/doc features depend on working auth and ownership checks.
 
-**Steps**
-1. Phase 1 (MVP foundation): Implement all currently stubbed route handlers and core dependencies.
-2. Implement authentication and authorization first (*blocks steps 3-6*): register/login with password hashing, JWT issuance/verification, and current-user dependency used by chat/document routes.
-3. Implement chat workflows (*depends on 2*): create/list sessions and create/list messages with ownership checks and pagination limits.
-4. Implement document workflows (*depends on 2*): file upload endpoint, metadata persistence, document listing, file validation (type/size), and baseline status transitions.
-5. Add basic LLM response generation in chat (*depends on 3; parallel with 4 once auth is done*): provider config, request handling, error fallback, and assistant message persistence.
-6. Add API robustness (*parallel with 3-5*): CORS middleware, global exception handling, standardized error responses, request logging.
-7. Phase 2 (RAG completion): connect vector store and retrieval path.
-8. Implement document processing pipeline (*depends on 4*): extract text, chunking, embedding generation, and vector upsert; update status pending/processing/ready/failed.
-9. Implement retrieval-augmented chat path (*depends on 5 and 8*): similarity retrieval, prompt context injection, and sources returned in message payload.
-10. Complete document lifecycle (*depends on 8*): reprocess/update and delete endpoints that also clean vector entries.
-11. Phase 3 (Hardening): security, scale, and test depth.
-12. Add rate limiting, stricter validation, ownership audits, and DB pool tuning (*parallelizable items*).
-13. Add thorough automated tests (*depends on 2-10*): auth integration tests, chat/doc API tests, RAG retrieval assertions, error-path tests.
-14. Phase 4 (Ops readiness): deployment and observability.
-15. Add startup/readiness checks, container setup, and CI pipeline (lint/type/test/build) (*depends on stable implementation and tests*).
+### Phase 1 — MVP foundation ✅ complete
+
+- [x] 1. Authentication and authorization: register/login with password hashing, JWT issuance/verification, and current-user dependency used by chat/document routes.
+- [x] 2. Chat workflows: create/list sessions and create/list messages with ownership checks.
+- [x] 3. Document workflows: file upload endpoint, metadata persistence, document listing, file validation (type/size), and baseline status transitions.
+- [x] 4. Basic LLM response generation in chat: provider config, request handling, error fallback (503 when unconfigured), and assistant message persistence. *(Delivered as part of Phase 2 — went straight to the retrieval-augmented path.)*
+- [ ] 5. API robustness: CORS middleware, global exception handling, standardized error responses. *(Request logging + correlation IDs are done via `app/logging_config.py`; CORS and a global exception handler are still missing from `app/main.py`.)*
+
+### Phase 2 — RAG completion ✅ complete (2026-07-14)
+
+- [x] 6. Document processing pipeline: extract text, chunking, embedding generation, and vector upsert; status pending/processing/ready/failed. *(`app/rag/pipeline.py`, FastAPI background task.)*
+- [x] 7. Retrieval-augmented chat path: similarity retrieval (filtered by `user_id`), prompt context injection, and sources returned in message payload. *(`ChatService.send_message` + `app/rag/generation.py`.)*
+- [x] 8. Complete document lifecycle: reprocess/update (`PUT` re-processes the stored file) and delete that also cleans vector entries.
+
+### Phase 3 — Hardening ⬜ next
+
+- [ ] 9. Rate limiting, stricter validation, ownership audits, and DB pool tuning (parallelizable items).
+- [ ] 10. Thorough automated tests: auth integration tests, chat/doc API tests, RAG retrieval assertions (fake embeddings/LLM — see pattern in the 2026-07-14 verification), error-path tests. *(Requires adding `pytest` etc. to `pyproject.toml` — no test tooling installed yet.)*
+
+### Phase 4 — Ops readiness ⬜
+
+- [ ] 11. Startup/readiness checks (`/health` exists but reports no dependency state), Docker Compose stack, CI pipeline (lint/type/test/build).
 
 **Relevant files**
-- /Users/anhnvt/projects/lab/rag-langchain/app/routes/auth.py — implement register/login handlers now returning 501.
-- /Users/anhnvt/projects/lab/rag-langchain/app/routes/chat.py — implement session/message CRUD, ownership checks, pagination.
-- /Users/anhnvt/projects/lab/rag-langchain/app/routes/documents.py — implement upload/list/update/delete behavior and status transitions.
-- /Users/anhnvt/projects/lab/rag-langchain/app/dependencies.py — add authenticated-user dependency and shared auth utilities.
-- /Users/anhnvt/projects/lab/rag-langchain/app/config.py — extend provider/vector/task settings and validation for required env vars.
-- /Users/anhnvt/projects/lab/rag-langchain/app/models/chat_session.py — reuse ownership relation and updated_at indexing behavior.
-- /Users/anhnvt/projects/lab/rag-langchain/app/models/message.py — reuse message role/content/sources structure for assistant output + citations.
-- /Users/anhnvt/projects/lab/rag-langchain/app/models/document.py — reuse status enum transitions for processing pipeline.
-- /Users/anhnvt/projects/lab/rag-langchain/alembic/versions/e3c9721fe007_add_composite_descending_indexes.py — preserve index strategy for chat listing performance.
-- /Users/anhnvt/projects/lab/rag-langchain/pyproject.toml — add runtime/test/tooling dependencies.
-- /Users/anhnvt/projects/lab/rag-langchain/README.md — document env vars, setup, and endpoint behavior.
+- `app/routers/auth.py`, `app/routers/chat.py`, `app/routers/documents.py` — implemented route handlers.
+- `app/rag/` — RAG infrastructure: `extraction.py`, `chunking.py`, `vector_store.py`, `generation.py`, `pipeline.py`.
+- `app/dependencies.py` — authenticated-user dependency and shared auth utilities.
+- `app/config.py` — provider/vector settings (`GOOGLE_API_KEY`, `GEMINI_*`, `CHROMA_PERSIST_DIR`, `RAG_TOP_K`).
+- `app/models/chat_session.py`, `app/models/message.py` (role/content/sources), `app/models/document.py` (status enum).
+- `alembic/versions/e3c9721fe007_add_composite_descending_indexes.py` — preserve index strategy for chat listing performance.
+- `pyproject.toml` — test/tooling dependencies still to add (Phase 3).
+- `README.md`, `CLAUDE.md` — current env vars, setup, and endpoint behavior (kept in sync as of 2026-07-14).
 
 **Verification**
-1. Auth smoke: register/login returns token; protected route rejects missing token and accepts valid token.
-2. Chat flow: create session, send message, list messages, and confirm ownership isolation across two users.
-3. Document flow: upload valid file, reject invalid type/oversize file, list files, and verify status progression.
-4. RAG flow: upload and process document, then ask a grounded question and confirm source references in response.
-5. Stability checks: invalid payloads return structured 4xx (not 500), error logs contain request context.
-6. Performance baseline: paginate large lists and verify indexed queries are used.
-7. Release checks: run migrations on clean DB, start stack, health/readiness endpoints report dependency state.
+1. ✅ Auth smoke: register/login returns token; protected route rejects missing token and accepts valid token. *(2026-07-14)*
+2. ✅ Chat flow: create session, send message, list messages, ownership isolation across two users. *(2026-07-14, isolation verified at vector level)*
+3. ✅ Document flow: upload valid file, list files, status progression pending→processing→ready/failed. *(2026-07-14)*
+4. ✅ RAG flow: upload and process document, grounded question returns source references; delete cleans vectors. *(2026-07-14 — with faked Google models; real-key run still pending on `GOOGLE_API_KEY` being set in `.env`)*
+5. ⬜ Stability checks: invalid payloads return structured 4xx (not 500), error logs contain request context.
+6. ⬜ Performance baseline: paginate large lists and verify indexed queries are used.
+7. ⬜ Release checks: run migrations on clean DB, start stack, health/readiness endpoints report dependency state.
 
 **Decisions**
 - Included scope: backend completion of auth/chat/document/RAG plus minimum production hardening.
 - Excluded scope for now: frontend UI work, advanced account management (password reset UX), multi-tenant org features.
 - Sequencing rule: no RAG integration before auth and ownership checks are active.
-
-**Further Considerations**
-1. LLM provider choice should be fixed early (OpenAI vs Anthropic vs self-hosted) because it affects prompting, retries, and cost controls.
-2. Background processing choice (Celery/Redis vs lightweight in-process jobs) should align with deployment target and expected document volume.
-3. Storage target (local disk vs object storage) should be finalized before production rollout to avoid migration of file paths later.
+- **Resolved 2026-07-14:** LLM provider = Google Gemini (`gemini-2.5-flash-lite` chat, `gemini-embedding-001` embeddings). Background processing = FastAPI `BackgroundTasks` in-process (Celery swap kept easy: task takes only a document id). Vector store = embedded Chroma (`CHROMA_PERSIST_DIR`). Storage = local disk (revisit object storage before production rollout).

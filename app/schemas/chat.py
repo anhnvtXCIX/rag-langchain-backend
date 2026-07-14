@@ -18,9 +18,20 @@ class SendMessageRequest(BaseModel):
     content: str = Field(min_length=1)
 
 
+class MessageSource(BaseModel):
+    document_id: int
+    filename: str
+    snippet: str
+
+
 class MessageResponse(BaseModel):
     id: int
     role: str
     content: str
-    sources: list[dict] | None = None
+    sources: list[MessageSource] | None = None
     created_at: datetime
+
+
+class ChatTurnResponse(BaseModel):
+    user_message: MessageResponse
+    assistant_message: MessageResponse
