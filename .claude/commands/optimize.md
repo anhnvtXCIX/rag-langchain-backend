@@ -13,6 +13,7 @@ Review the provided code for the following issues in order of priority:
 5. **Concurrency issues** - find race conditions or threading problems
 
 Format your response with:
+
 - Issue severity (Critical/High/Medium/Low)
 - Location in code
 - Explanation
