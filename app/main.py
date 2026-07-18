@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.logging_config import configure_app_logging, setup_logging
+from app.core.logging import configure_app_logging, setup_logging
 from app.routers.auth import router as auth_router
 from app.routers.chat import router as chat_router
 from app.routers.documents import router as documents_router

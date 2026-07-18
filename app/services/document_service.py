@@ -6,7 +6,7 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import Settings
+from app.core.config import Settings
 from app.models.document import Document, DocumentStatus
 from app.rag.vector_store import delete_document_chunks
 

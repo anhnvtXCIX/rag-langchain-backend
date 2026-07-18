@@ -3,8 +3,8 @@ from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.config import get_settings
-from app.models.base import Base
+from app.core.config import get_settings
+from app.models.base import Base  # noqa: F401
 
 
 @lru_cache

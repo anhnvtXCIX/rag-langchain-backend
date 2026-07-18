@@ -4,7 +4,7 @@ from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.config import get_settings
+from app.core.config import get_settings
 from app.models.message import Message, MessageRole
 from app.rag.errors import LLMNotConfiguredError
 

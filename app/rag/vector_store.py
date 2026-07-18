@@ -6,12 +6,12 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-from app.config import get_settings
+from app.core.config import get_settings
 from app.rag.errors import LLMNotConfiguredError
 
 
 @lru_cache
-def get_chroma_client() -> chromadb.ClientAPI:
+def get_chroma_client():
     # Must be a process-wide singleton: multiple PersistentClients against
     # the same path can conflict.
     return chromadb.PersistentClient(path=get_settings().chroma_persist_dir)
@@ -26,7 +26,6 @@ def get_embeddings() -> GoogleGenerativeAIEmbeddings:
         raise LLMNotConfiguredError
     return GoogleGenerativeAIEmbeddings(
         model=settings.gemini_embedding_model,
-        google_api_key=settings.google_api_key,
     )
 
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
 
-from app.config import get_settings
+from app.core.config import get_settings
 from app.dependencies import CurrentUserDep, DbSessionDep
 from app.models.document import Document
 from app.rag.pipeline import process_document

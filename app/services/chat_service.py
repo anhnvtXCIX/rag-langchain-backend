@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.core.config import get_settings
 from app.models.chat_session import ChatSession
 from app.models.message import Message, MessageRole
 from app.rag.generation import generate_answer, get_chat_model

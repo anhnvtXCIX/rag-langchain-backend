@@ -24,13 +24,13 @@ This project currently provides:
 ```text
 app/
  main.py               # FastAPI app entrypoint
- config.py             # Environment-based settings
  database.py           # Async engine/session dependency
  dependencies.py       # Auth + DB dependencies
  models/               # SQLAlchemy models
  routers/              # API endpoints
  schemas/              # Request/response schemas
  services/             # Business logic
+ core/                 # Core configs
 alembic/
  versions/             # Database migrations
 ```
