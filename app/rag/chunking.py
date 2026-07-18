@@ -6,6 +6,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 
+_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
+)
+
 
 def chunk_text(
     text: str,
@@ -14,9 +18,6 @@ def chunk_text(
     document_id: int,
     filename: str,
 ) -> list[Document]:
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
-    )
     # user_id enables per-user retrieval filtering; document_id enables
     # vector cleanup when a document is deleted or re-processed.
     metadata = {
@@ -26,5 +27,5 @@ def chunk_text(
     }
     return [
         Document(page_content=chunk, metadata=dict(metadata))
-        for chunk in splitter.split_text(text)
+        for chunk in _splitter.split_text(text)
     ]

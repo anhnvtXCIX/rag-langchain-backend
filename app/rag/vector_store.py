@@ -51,10 +51,13 @@ async def search_chunks(query: str, *, user_id: int, k: int) -> list[Document]:
 
 async def delete_document_chunks(document_id: int) -> None:
     # langchain_chroma.Chroma.delete only accepts ids, so drop to the raw
-    # collection to delete by metadata filter.
-    collection = get_chroma_client().get_or_create_collection(
-        get_settings().chroma_collection_name
-    )
-    await anyio.to_thread.run_sync(  # pyright: ignore[reportAttributeAccessIssue]
-        lambda: collection.delete(where={"document_id": document_id})
-    )
+    # collection to delete by metadata filter. Both the collection lookup
+    # and the delete hit the on-disk Chroma backend, so the whole sequence
+    # runs off the event loop, not just the delete call.
+    def _delete() -> None:
+        collection = get_chroma_client().get_or_create_collection(
+            get_settings().chroma_collection_name
+        )
+        collection.delete(where={"document_id": document_id})
+
+    await anyio.to_thread.run_sync(_delete)  # pyright: ignore[reportAttributeAccessIssue]
