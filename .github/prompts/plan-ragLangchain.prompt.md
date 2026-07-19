@@ -1,6 +1,6 @@
 ## Plan: Complete RAG App Feature Checklist
 
-> **Status (2026-07-14): Phases 1–2 complete.** Next up: Phase 3 (hardening & tests). Mark items `[x]` as they land and update this line, so anyone (human or agent) can see at a glance what's done and what's next.
+> **Status (2026-07-19): Phases 1–2 complete; Phase 3 item 10 (automated tests) landed.** Next up: item 9 (rate limiting, stricter validation, DB pool tuning) and Phase 4 ops readiness. Mark items `[x]` as they land and update this line, so anyone (human or agent) can see at a glance what's done and what's next.
 
 Deliver the app in four phases: first make all stubbed endpoints functional (auth, chat, documents), then add true RAG (embedding and retrieval), then harden security/performance, then finalize ops/deployment. This sequence minimizes blockers because chat/doc features depend on working auth and ownership checks.
 
@@ -21,7 +21,7 @@ Deliver the app in four phases: first make all stubbed endpoints functional (aut
 ### Phase 3 — Hardening ⬜ next
 
 - [ ] 9. Rate limiting, stricter validation, ownership audits, and DB pool tuning (parallelizable items).
-- [ ] 10. Thorough automated tests: auth integration tests, chat/doc API tests, RAG retrieval assertions (fake embeddings/LLM — see pattern in the 2026-07-14 verification), error-path tests. *(Requires adding `pytest` etc. to `pyproject.toml` — no test tooling installed yet.)*
+- [x] 10. Thorough automated tests: auth integration tests, chat/doc API tests, RAG retrieval assertions (fake embeddings/LLM), error-path tests, and multi-tenant ownership checks. *(`tests/`, `uv run pytest` — in-memory SQLite via `Base.metadata.create_all`, RAG call sites mocked at `app.services.chat_service.*`/`app.rag.pipeline.*`. Alembic migrations and real MySQL/Gemini/Chroma remain unexercised by this suite — still manual.)*
 
 ### Phase 4 — Ops readiness ⬜
 
@@ -34,7 +34,8 @@ Deliver the app in four phases: first make all stubbed endpoints functional (aut
 - `app/config.py` — provider/vector settings (`GOOGLE_API_KEY`, `GEMINI_*`, `CHROMA_PERSIST_DIR`, `RAG_TOP_K`).
 - `app/models/chat_session.py`, `app/models/message.py` (role/content/sources), `app/models/document.py` (status enum).
 - `alembic/versions/e3c9721fe007_add_composite_descending_indexes.py` — preserve index strategy for chat listing performance.
-- `pyproject.toml` — test/tooling dependencies still to add (Phase 3).
+- `pyproject.toml` — `pytest`/`pytest-asyncio`/`pytest-cov`/`aiosqlite`/`httpx` dev deps and `[tool.pytest.ini_options]`.
+- `tests/` — `conftest.py` (SQLite-in-memory DB + RAG mocking fixtures), `routers/`, `services/`, `rag/`.
 - `README.md`, `CLAUDE.md` — current env vars, setup, and endpoint behavior (kept in sync as of 2026-07-14).
 
 **Verification**
@@ -42,7 +43,7 @@ Deliver the app in four phases: first make all stubbed endpoints functional (aut
 2. ✅ Chat flow: create session, send message, list messages, ownership isolation across two users. *(2026-07-14, isolation verified at vector level)*
 3. ✅ Document flow: upload valid file, list files, status progression pending→processing→ready/failed. *(2026-07-14)*
 4. ✅ RAG flow: upload and process document, grounded question returns source references; delete cleans vectors. *(2026-07-14 — with faked Google models; real-key run still pending on `GOOGLE_API_KEY` being set in `.env`)*
-5. ⬜ Stability checks: invalid payloads return structured 4xx (not 500), error logs contain request context.
+5. 🟡 Stability checks: invalid payloads return structured 4xx, not 500 — covered by `tests/` for auth/chat/document error paths. ⬜ Error logs containing request context is still unverified by tests.
 6. ⬜ Performance baseline: paginate large lists and verify indexed queries are used.
 7. ⬜ Release checks: run migrations on clean DB, start stack, health/readiness endpoints report dependency state.
 

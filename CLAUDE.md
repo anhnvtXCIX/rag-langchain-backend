@@ -21,15 +21,19 @@ uv run alembic revision --autogenerate -m "describe_change"
 uv run alembic upgrade head
 uv run alembic current
 uv run alembic history
+
+# Tests
+uv run pytest
+uv run pytest --cov=app --cov-report=term-missing
 ```
 
-There is no test suite, linter, or type-checker configured in `pyproject.toml` yet (no `pytest`, `ruff`, or `mypy` in `uv.lock`). VS Code is configured to format with the Ruff extension on save, but it is not a project dependency — don't assume `uv run ruff` or `uv run pytest` work until those are added.
+`ruff` is a dev dependency (`uv run ruff check` / `uv run ruff format`) and VS Code formats with it on save. `pytest`/`pytest-asyncio`/`pytest-cov`/`aiosqlite`/`httpx` are dev dependencies; the suite (`tests/`) runs against an in-memory SQLite DB (`Base.metadata.create_all`/`drop_all` per test, no Alembic) and mocks the RAG call sites (`app.services.chat_service.*`, `app.rag.pipeline.*`) rather than requiring a real `GOOGLE_API_KEY` or MySQL — see `tests/conftest.py`. There is still no type-checker configured (no `mypy` in `uv.lock`).
 
-Required env vars (`.env`, see `.env.example`): `DATABASE_URL` (async MySQL DSN, e.g. `mysql+aiomysql://...`), `JWT_SECRET_KEY`, and `GOOGLE_API_KEY` for any RAG functionality (document processing fails and chat returns 503 without it; an empty value counts as unset). Everything else in `app/config.py::Settings` has a default (`CHROMA_PERSIST_DIR`, `CHROMA_COLLECTION_NAME`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBEDDING_MODEL`, `RAG_TOP_K`, `UPLOAD_DIR`, `ENV`, `LOG_JSON`, `LOG_LEVEL`) or is unused (`CELERY_BROKER_URL`, `CHROMA_HOST`/`CHROMA_PORT`).
+Required env vars (`.env`, see `.env.example`): `DATABASE_URL` (async MySQL DSN, e.g. `mysql+aiomysql://...`), `JWT_SECRET_KEY`, and `GOOGLE_API_KEY` for any RAG functionality (document processing fails and chat returns 503 without it; an empty value counts as unset). Everything else in `app/core/config.py::Settings` has a default (`CHROMA_PERSIST_DIR`, `CHROMA_COLLECTION_NAME`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBEDDING_MODEL`, `RAG_TOP_K`, `UPLOAD_DIR`, `ENV`, `LOG_JSON`, `LOG_LEVEL`) or is unused (`CELERY_BROKER_URL`, `CHROMA_HOST`/`CHROMA_PORT`).
 
 ## Architecture
 
-Layered, per FastAPI best-practice conventions (see `.github/skills/fastapi-patterns/SKILL.md` for the full pattern reference this codebase follows):
+Layered, per FastAPI best-practice conventions (see the `fastapi-patterns` skill for the full pattern reference this codebase follows):
 
 ```text
 router  ->  service  ->  model (SQLAlchemy async)
@@ -47,16 +51,16 @@ router  ->  service  ->  model (SQLAlchemy async)
 
 Cross-cutting pieces:
 
-- `app/config.py` — `Settings` (pydantic-settings, reads `.env`) exposed via a cached `get_settings()`.
+- `app/core/config.py` — `Settings` (pydantic-settings, reads `.env`) exposed via a cached `get_settings()`.
 - `app/database.py` — cached async engine/sessionmaker; `get_db()` is the FastAPI dependency yielding an `AsyncSession` per request.
 - `app/dependencies.py` — `DbSessionDep` and `CurrentUserDep` (`Annotated[...]` aliases) used throughout routers; `get_current_user` decodes the bearer JWT and loads the `User` by `username` (the JWT `sub` claim).
-- `app/security.py` — password hashing (`pbkdf2_sha256` via passlib) and JWT encode/decode helpers, both settings-driven.
-- `app/logging_config.py` — stdlib `logging.config.dictConfig` setup with correlation-ID middleware (`asgi_correlation_id`); text formatter in dev, JSON formatter when `ENV=prod` or `LOG_JSON=true`. `uvicorn.access` logging is disabled in favor of the custom `log_requests` middleware.
+- `app/core/security.py` — password hashing (`pbkdf2_sha256` via passlib) and JWT encode/decode helpers, both settings-driven.
+- `app/core/logging.py` — stdlib `logging.config.dictConfig` setup with correlation-ID middleware (`asgi_correlation_id`); text formatter in dev, JSON formatter when `ENV=prod` or `LOG_JSON=true`. `uvicorn.access` logging is disabled in favor of the custom `log_requests` middleware.
 - `app/main.py` — app assembly: calls `setup_logging()`/`configure_app_logging()` before including routers (auth, documents, chat) and a `/health` endpoint.
 
 Auth flow: `POST /auth/register` and `/auth/login` return a JWT bearer token whose `sub` is the `username`; all other routes require `Authorization: Bearer <token>` via `CurrentUserDep`.
 
-Migrations: `alembic/env.py` imports `app.config.get_settings()` for the DB URL and runs async migrations via `async_engine_from_config`. Composite descending indexes (e.g. `ix_chat_sessions_user_id_updated_at_desc`, `ix_messages_session_id_created_at_desc`) exist specifically to keep the "list newest first, scoped to owner" queries indexed — preserve this pattern when adding similar listing endpoints.
+Migrations: `alembic/env.py` imports `app.core.config.get_settings()` for the DB URL and runs async migrations via `async_engine_from_config`. Composite descending indexes (e.g. `ix_chat_sessions_user_id_updated_at_desc`, `ix_messages_session_id_created_at_desc`) exist specifically to keep the "list newest first, scoped to owner" queries indexed — preserve this pattern when adding similar listing endpoints.
 
 ## Known gaps
 
@@ -64,8 +68,8 @@ Migrations: `alembic/env.py` imports `app.config.get_settings()` for the DB URL 
 - `CELERY_BROKER_URL` and `CHROMA_HOST`/`CHROMA_PORT` settings are unused (Chroma runs embedded via `CHROMA_PERSIST_DIR`).
 - Changing `GEMINI_EMBEDDING_MODEL` invalidates the existing Chroma collection (dimension mismatch) — delete `CHROMA_PERSIST_DIR` and re-process all documents.
 - No streaming: chat is a single request/response returning both the persisted user message and the assistant reply (`ChatTurnResponse`).
-- Still no test suite/linter; verification is manual (see README example requests).
+- `pytest` covers auth, chat, and document routers plus the RAG pure functions and background pipeline (`tests/`); no type-checker is configured yet. Real Gemini/Chroma calls and MySQL-specific SQL remain unexercised by the suite (mocked RAG, in-memory SQLite) — see README example requests for manual verification of those paths.
 
-## Reference material in `.github/`
+## Reference material
 
-`.github/skills/` contains detailed pattern references (FastAPI, SQLAlchemy/Alembic, uv) that this codebase's conventions were built from — consult them for idiomatic examples before introducing a different pattern (e.g. service-layer error classes, `Annotated` dependency aliases, async session handling, migration authoring). `.github/prompts/plan-*.md` are the living planning docs: `plan-ragLangchain.prompt.md` is the phased checklist with completion status (Phases 1–2 done; Phase 3 hardening/tests is next) — **update its checkboxes and status line when you complete a phase or step**; `plan-internalDocQAChat.prompt.md` is the original product spec with an "As-built deviations" table listing where the implementation intentionally differs (BackgroundTasks not Celery, embedded Chroma, 10 MB/`.pdf`, `gemini-embedding-001`, PUT = re-process).
+The `fastapi-patterns`, `sqlalchemy-alembic-expert-best-practices-code-review`, `rag-implementation`, and `uv-package-manager` skills contain detailed pattern references that this codebase's conventions were built from — consult them for idiomatic examples before introducing a different pattern (e.g. service-layer error classes, `Annotated` dependency aliases, async session handling, migration authoring). `.github/prompts/plan-*.md` are the living planning docs: `plan-ragLangchain.prompt.md` is the phased checklist with completion status (Phases 1–2 done; Phase 3 hardening/tests is next) — **update its checkboxes and status line when you complete a phase or step**; `plan-internalDocQAChat.prompt.md` is the original product spec with an "As-built deviations" table listing where the implementation intentionally differs (BackgroundTasks not Celery, embedded Chroma, 10 MB/`.pdf`, `gemini-embedding-001`, PUT = re-process).
