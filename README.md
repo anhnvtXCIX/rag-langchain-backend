@@ -33,6 +33,7 @@ app/
  core/                 # Core configs
 alembic/
  versions/             # Database migrations
+tests/                 # Testing suite
 ```
 
 ## Prerequisites

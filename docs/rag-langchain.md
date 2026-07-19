@@ -28,6 +28,7 @@ Deliver the app in four phases: first make all stubbed endpoints functional (aut
 - [ ] 11. Startup/readiness checks (`/health` exists but reports no dependency state), Docker Compose stack, CI pipeline (lint/type/test/build).
 
 **Relevant files**
+
 - `app/routers/auth.py`, `app/routers/chat.py`, `app/routers/documents.py` — implemented route handlers.
 - `app/rag/` — RAG infrastructure: `extraction.py`, `chunking.py`, `vector_store.py`, `generation.py`, `pipeline.py`.
 - `app/dependencies.py` — authenticated-user dependency and shared auth utilities.
@@ -39,6 +40,7 @@ Deliver the app in four phases: first make all stubbed endpoints functional (aut
 - `README.md`, `CLAUDE.md` — current env vars, setup, and endpoint behavior (kept in sync as of 2026-07-14).
 
 **Verification**
+
 1. ✅ Auth smoke: register/login returns token; protected route rejects missing token and accepts valid token. *(2026-07-14)*
 2. ✅ Chat flow: create session, send message, list messages, ownership isolation across two users. *(2026-07-14, isolation verified at vector level)*
 3. ✅ Document flow: upload valid file, list files, status progression pending→processing→ready/failed. *(2026-07-14)*
